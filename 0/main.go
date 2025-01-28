@@ -7,6 +7,10 @@ import (
 	"net"
 )
 
+/*
+	RFC 862
+*/
+
 // protohackers.com/problem/0
 func main() {
 	ln := setup(":8080")
