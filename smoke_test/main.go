@@ -7,6 +7,7 @@ import (
 	"net"
 )
 
+// protohackers.com/problem/0
 func main() {
 	ln := setup(":8080")
 	defer ln.Close()
@@ -35,16 +36,10 @@ func handleConns(ln net.Listener) {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 	buf := make([]byte, 1024)
-	for {
-		n, err := readConn(conn, buf)
-		if err != nil {
-			log.Println("Error reading:", err)
-			return
-		}
-		if err := writeConn(conn, buf[:n]); err != nil {
-			log.Println("Error writing:", err)
-			return
-		}
+	if n, err := readConn(conn, buf); err != nil {
+		log.Println("Error reading:", err)
+	} else if err := writeConn(conn, buf[:n]); err != nil {
+		log.Println("Error writing:", err)
 	}
 }
 
