@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 )
 
 /*
@@ -21,12 +20,6 @@ type insertion struct {
 }
 
 const size = 9
-
-var bufferPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, size)
-	},
-}
 
 func main() {
 	ln := setup(":8080")
@@ -64,7 +57,7 @@ func handle(conn net.Conn) {
 		if err != nil || data != size {
 			return
 		}
-		if sum, query := process(buf, inserts); query {
+		if sum, query := process(buf, &inserts); query {
 			sumBytes := make([]byte, 4)
 			binary.BigEndian.PutUint32(sumBytes, uint32(sum))
 			conn.Write(sumBytes)
@@ -72,12 +65,12 @@ func handle(conn net.Conn) {
 	}
 }
 
-func process(data []byte, inserts []insertion) (int32, bool) {
+func process(data []byte, inserts *[]insertion) (int32, bool) {
 	operation := rune(data[0])
 	if operation == 'I' {
-		insert(data, &inserts)
+		insert(data, inserts)
 	} else if operation == 'Q' {
-		return query(data, &inserts), true
+		return query(data, inserts), true
 	} else {
 		log.Println("invalid operation", operation)
 	}
@@ -86,9 +79,9 @@ func process(data []byte, inserts []insertion) (int32, bool) {
 
 func insert(data []byte, insertions *[]insertion) {
 	time := convert(data[1:5])
-	price := convert(data[6:9])
+	price := convert2(data[6:9])
 	*insertions = append(*insertions, insertion{time, price})
-	log.Println("inserted", price, time)
+	log.Println("time: ", time, " ", " price: ", price)
 }
 
 func query(data []byte, insertions *[]insertion) int32 {
@@ -105,22 +98,30 @@ func query(data []byte, insertions *[]insertion) int32 {
 }
 
 func convert(data []byte) int32 {
+	if len(data) < 4 {
+		data = append(data, make([]byte, 4-len(data))...)
+	}
+	con := int32(data[0])<<24 | int32(data[1])<<16 | int32(data[2])<<8 | int32(data[3])
+	return con
+}
+
+// ok so im still figuring this one out
+func convert2(data []byte) int32 {
+	if len(data) < 4 {
+		data = append(data, make([]byte, 4-len(data))...)
+	}
 	var result int32
 	length := len(data)
 
 	if length > 0 {
-		result |= int32(data[0]) << 24
+		result |= int32(data[0]) << 16
 	}
 	if length > 1 {
-		result |= int32(data[1]) << 16
+		result |= int32(data[1]) << 8
 	}
 	if length > 2 {
-		result |= int32(data[2]) << 8
+		result |= int32(data[2])
 	}
-	if length > 3 {
-		result |= int32(data[3])
-	}
-
 	return result
 }
 
