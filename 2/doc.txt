@@ -1,0 +1,27 @@
+req
+byte:  |  0   |  1     2     3     4  |  5     6     7     8  |
+type:  | char |         int32         |         int32         |
+
+    Hexadecimal:                 Decoded:
+<-- 49 00 00 30 39 00 00 00 65   I 12345 101
+<-- 49 00 00 30 3a 00 00 00 66   I 12346 102
+<-- 49 00 00 30 3b 00 00 00 64   I 12347 100
+<-- 49 00 00 a0 00 00 00 00 05   I 40960 5
+<-- 51 00 00 30 00 00 00 40 00   Q 12288 16384
+--> 00 00 00 65                  101
+
+req
+Hexadecimal: 51    00 00 03 e8    00 01 86 a0
+Decoded:      Q           1000         100000
+
+res
+Hexadecimal: 00 00 13 f3
+Decoded:            5107
+
+{
+  echo -n -e '\x49\x00\x00\x30\x39\x00\x00\x00\x65'
+  echo -n -e '\x49\x00\x00\x30\x3a\x00\x00\x00\x66'
+  echo -n -e '\x49\x00\x00\x30\x3b\x00\x00\x00\x64'
+  echo -n -e '\x49\x00\x00\xa0\x00\x00\x00\x00\x05'
+  echo -n -e '\x51\x00\x00\x30\x00\x00\x00\x40\x00'
+} | nc localhost 8080

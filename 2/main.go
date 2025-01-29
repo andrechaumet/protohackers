@@ -1,17 +1,17 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
-	"git
 	"io"
 	"log"
 	"net"
 	"sync"
 )
 
-// protohackers.com/problem/2
-
 /*
+	protohackers.com/problem/2
+
 	byte:  |  0   |  1     2     3     4  |  5     6     7     8  |
 	type:  | char |         int32         |         int32         |
 */
@@ -21,19 +21,6 @@ type insertion struct {
 	amount int32
 }
 
-type selection struct {
-	start int32
-	end   int32
-}
-
-func newInsert(data []byte) {
-
-}
-
-func newSelect(data []byte) {
-
-}
-
 const size = 9
 
 var bufferPool = sync.Pool{
@@ -41,14 +28,6 @@ var bufferPool = sync.Pool{
 		return make([]byte, size)
 	},
 }
-
-/*
-func NewDateStore() *redblacktree.Tree {
-	return &DateStore{
-		tree: redblacktree.New(),
-	}
-}
-*/
 
 func main() {
 	ln := setup(":8080")
@@ -76,58 +55,57 @@ func listen(ln net.Listener) {
 }
 
 func handle(conn net.Conn) {
-	nodes := redblacktree.Tree{}
+	inserts := make([]insertion, 0)
 	for {
-		buf := bufferPool.Get().([]byte)
+		buf := [9]byte{}
 		data, err := read(conn, buf)
 		if err != nil || data != size {
 			return
 		}
-		process(buf, nodes)
+		if sum, query := process(buf, inserts); query {
+			sumBytes := make([]byte, 4)
+			binary.BigEndian.PutUint32(sumBytes, uint32(sum))
+			conn.Write(sumBytes)
+		}
 	}
 }
 
-func process(data []byte, nodes redblacktree.Tree) error {
+func process(data [9]byte, inserts []insertion) (int32, bool) {
 	operation := rune(data[0])
 	if operation == 'I' {
-
+		insert(data, &inserts)
 	} else if operation == 'Q' {
-
+		return query(data, &inserts), true
 	}
+	return 0, false
 }
 
-func insert(date int32, amount int32) {
-
+func insert(data [9]byte, insertions *[]insertion) {
+	time := convert(data[1:5])
+	price := convert(data[6:9])
+	*insertions = append(*insertions, insertion{time, price})
+	log.Println("inserted %d at %d\n", price, time)
 }
 
-func query(start int32, end int32) {
-
+func query(data [9]byte, insertions *[]insertion) int32 {
+	start := convert(data[1:5])
+	end := convert(data[6:9])
+	var sum int32
+	for _, insertion := range *insertions {
+		if insertion.time > start && insertion.time < end {
+			sum += insertion.amount
+		}
+	}
+	log.Println("sum from %d to %d\n", start, end)
+	return sum
 }
 
-/*
-49
-time := extract(data[0:4])0
-price := extract(data[5:9])
---
-51
-minTime := extract(data[0:4])
-maxTime := extract(data[5:9])
---
-    Hexadecimal:                 Decoded:
-<-- 49 00 00 30 39 00 00 00 65   I 12345 101
-<-- 49 00 00 30 3a 00 00 00 66   I 12346 102
-<-- 49 00 00 30 3b 00 00 00 64   I 12347 100
-<-- 49 00 00 a0 00 00 00 00 05   I 40960 5
-<-- 51 00 00 30 00 00 00 40 00   Q 12288 16384
---> 00 00 00 65                  101
-*/
-
-func extract(data []byte) int32 {
-	return int32(bytesArray[1])<<24 | int32(bytesArray[2])<<16 | int32(bytesArray[3])<<8 | int32(bytesArray[4])
+func convert(data []byte) int32 {
+	return int32(data[0])<<24 | int32(data[1])<<16 | int32(data[2])<<8 | int32(data[3])
 }
 
-func read(conn net.Conn, buf []byte) (int, error) {
-	n, err := conn.Read(buf)
+func read(conn net.Conn, buf [9]byte) (int, error) {
+	n, err := conn.Read(buf) //aaaaa ayuda
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
