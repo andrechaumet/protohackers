@@ -11,7 +11,6 @@ import (
 
 /*
 	protohackers.com/problem/2
-
 	byte:  |  0   |  1     2     3     4  |  5     6     7     8  |
 	type:  | char |         int32         |         int32         |
 */
@@ -50,14 +49,17 @@ func listen(ln net.Listener) {
 			log.Println("Error accepting connection:", err)
 			continue
 		}
+		log.Println("Received a new connection")
 		go handle(conn)
 	}
 }
 
 func handle(conn net.Conn) {
+	defer conn.Close()
+	log.Println("Starting new process")
 	inserts := make([]insertion, 0)
 	for {
-		buf := [9]byte{}
+		var buf = make([]byte, 9)
 		data, err := read(conn, buf)
 		if err != nil || data != size {
 			return
@@ -70,24 +72,26 @@ func handle(conn net.Conn) {
 	}
 }
 
-func process(data [9]byte, inserts []insertion) (int32, bool) {
+func process(data []byte, inserts []insertion) (int32, bool) {
 	operation := rune(data[0])
 	if operation == 'I' {
 		insert(data, &inserts)
 	} else if operation == 'Q' {
 		return query(data, &inserts), true
+	} else {
+		log.Println("invalid operation", operation)
 	}
 	return 0, false
 }
 
-func insert(data [9]byte, insertions *[]insertion) {
+func insert(data []byte, insertions *[]insertion) {
 	time := convert(data[1:5])
 	price := convert(data[6:9])
 	*insertions = append(*insertions, insertion{time, price})
-	log.Println("inserted %d at %d\n", price, time)
+	log.Println("inserted", price, time)
 }
 
-func query(data [9]byte, insertions *[]insertion) int32 {
+func query(data []byte, insertions *[]insertion) int32 {
 	start := convert(data[1:5])
 	end := convert(data[6:9])
 	var sum int32
@@ -96,16 +100,41 @@ func query(data [9]byte, insertions *[]insertion) int32 {
 			sum += insertion.amount
 		}
 	}
-	log.Println("sum from %d to %d\n", start, end)
+	log.Println("sum", sum)
 	return sum
 }
 
 func convert(data []byte) int32 {
-	return int32(data[0])<<24 | int32(data[1])<<16 | int32(data[2])<<8 | int32(data[3])
+	var result int32
+	length := len(data)
+
+	if length > 0 {
+		result |= int32(data[0]) << 24
+	}
+	if length > 1 {
+		result |= int32(data[1]) << 16
+	}
+	if length > 2 {
+		result |= int32(data[2]) << 8
+	}
+	if length > 3 {
+		result |= int32(data[3])
+	}
+
+	return result
 }
 
-func read(conn net.Conn, buf [9]byte) (int, error) {
-	n, err := conn.Read(buf) //aaaaa ayuda
+/* this fella is in jail until new notice
+func convert(data []byte) int32 {
+	var result int32
+	for i, b := range data {
+		result |= int32(b) << (24 - 8*i)
+	}
+	return result
+}*/
+
+func read(conn net.Conn, buf []byte) (int, error) {
+	n, err := conn.Read(buf[:])
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
 	}
