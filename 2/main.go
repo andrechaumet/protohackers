@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"git
 	"io"
 	"log"
 	"net"
@@ -15,6 +16,24 @@ import (
 	type:  | char |         int32         |         int32         |
 */
 
+type insertion struct {
+	time   int32
+	amount int32
+}
+
+type selection struct {
+	start int32
+	end   int32
+}
+
+func newInsert(data []byte) {
+
+}
+
+func newSelect(data []byte) {
+
+}
+
 const size = 9
 
 var bufferPool = sync.Pool{
@@ -23,10 +42,18 @@ var bufferPool = sync.Pool{
 	},
 }
 
+/*
+func NewDateStore() *redblacktree.Tree {
+	return &DateStore{
+		tree: redblacktree.New(),
+	}
+}
+*/
+
 func main() {
 	ln := setup(":8080")
 	defer ln.Close()
-	handleConns(ln)
+	listen(ln)
 }
 
 func setup(address string) net.Listener {
@@ -37,31 +64,44 @@ func setup(address string) net.Listener {
 	return ln
 }
 
-func handleConns(ln net.Listener) {
+func listen(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Println("Error accepting connection:", err)
 			continue
 		}
-		go handleConn(conn)
+		go handle(conn)
 	}
 }
 
-func handleConn(conn net.Conn) {
-	buf := bufferPool.Get().([]byte)
-	data, err := readConn(conn, buf)
-	if err != nil || data != size {
-		return
+func handle(conn net.Conn) {
+	nodes := redblacktree.Tree{}
+	for {
+		buf := bufferPool.Get().([]byte)
+		data, err := read(conn, buf)
+		if err != nil || data != size {
+			return
+		}
+		process(buf, nodes)
 	}
-	process(buf)
 }
 
-func process(data []byte) error {
+func process(data []byte, nodes redblacktree.Tree) error {
 	operation := rune(data[0])
-	if operation != 'I' && operation != 'Q' {
+	if operation == 'I' {
+
+	} else if operation == 'Q' {
 
 	}
+}
+
+func insert(date int32, amount int32) {
+
+}
+
+func query(start int32, end int32) {
+
 }
 
 /*
@@ -86,7 +126,7 @@ func extract(data []byte) int32 {
 	return int32(bytesArray[1])<<24 | int32(bytesArray[2])<<16 | int32(bytesArray[3])<<8 | int32(bytesArray[4])
 }
 
-func readConn(conn net.Conn, buf []byte) (int, error) {
+func read(conn net.Conn, buf []byte) (int, error) {
 	n, err := conn.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
