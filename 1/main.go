@@ -7,13 +7,14 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 )
 
 // protohackers.com/problem/1
 func main() {
 	ln := setup(":8080")
 	defer ln.Close()
-	handleConns(ln)
+	listen(ln)
 }
 
 func setup(address string) net.Listener {
@@ -24,35 +25,38 @@ func setup(address string) net.Listener {
 	return ln
 }
 
-func handleConns(ln net.Listener) {
+func listen(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Println("Error accepting connection:", err)
 			continue
 		}
-		go handleConn(conn)
+		go handle(conn)
 	}
 }
 
-func handleConn(conn net.Conn) {
+func handle(conn net.Conn) {
 	defer conn.Close()
 	buf := make([]byte, 1024)
 	for {
-		if n, err := readConn(conn, buf); err != nil {
+		if _, err := read(conn, buf); err != nil {
 			log.Println("Error reading:", err)
 			return
-		} else {
-			err := writeConn(buf, n)
-			if err != nil {
-				log.Println("Error writing:", err)
-				return
-			}
+		}
+		val, err := extract(string(buf))
+		if err != nil {
+			log.Println("Error extracting:", err)
+			return
+		}
+		eval := prime(val)
+		if err := write(conn, eval); err != nil {
+			return
 		}
 	}
 }
 
-func readConn(conn net.Conn, buf []byte) (int, error) {
+func read(conn net.Conn, buf []byte) (int, error) {
 	n, err := conn.Read(buf)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return n, err
@@ -60,24 +64,18 @@ func readConn(conn net.Conn, buf []byte) (int, error) {
 	return n, nil
 }
 
-func writeConn(buf []byte, n int) error {
-	if req, err := extract(string(buf[:n])); err != nil {
-		log.Println(err)
-		return fmt.Errorf("could not extract data")
-	} else {
-		eval := prime(req)
-		if err := writeConn(nil, 0); err != nil {
-			return err
-		} else if !eval {
-			return fmt.Errorf("%.2f is not prime", req)
-		}
-	}
-	return nil
+func write(conn net.Conn, ans bool) error {
+	res := fmt.Sprintf(`{"method": "isPrime","number": %t}`, ans)
+	_, err := conn.Write([]byte(res))
+	return err
 }
 
 func extract(input string) (float64, error) {
+	input = strings.TrimSpace(input)
+	input = strings.ReplaceAll(input, "\x00", "")
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(input), &data); err != nil {
+		log.Println(input)
 		return 0, fmt.Errorf("invalid JSON: %v", err)
 	}
 
