@@ -75,7 +75,6 @@ func extract(input string) (float64, error) {
 	input = strings.ReplaceAll(input, "\x00", "")
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(input), &data); err != nil {
-		log.Println(input)
 		return 0, fmt.Errorf("invalid JSON: %v", err)
 	}
 
