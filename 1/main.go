@@ -79,13 +79,13 @@ func extract(input string) (float64, error) {
 	}
 
 	if method, ok := data["method"].(string); !ok || method != "isPrime" {
-		return 0, fmt.Errorf("no key 'method' 'isPrime' present")
+		return 0, fmt.Errorf("no key 'isPrime' present")
 	}
 
 	if number, ok := data["number"].(float64); ok {
 		return float64(number), nil
 	}
-	return 0, fmt.Errorf("key 'number' is not numeric")
+	return 0, fmt.Errorf("value 'number' is not numeric")
 }
 
 func prime(ev float64) bool {
