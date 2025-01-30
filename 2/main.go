@@ -19,7 +19,7 @@ type insertion struct {
 	amount int32
 }
 
-const size = 9
+const protoSize = 9
 
 func main() {
 	ln := setup(":8080")
@@ -53,8 +53,8 @@ func handle(conn net.Conn) {
 	inserts := make([]insertion, 0)
 	for {
 		var buf = make([]byte, 9)
-		data, err := read(conn, buf)
-		if err != nil || data != size {
+		size, err := read(conn, buf)
+		if err != nil || size != protoSize {
 			return
 		}
 		if sum, query := process(buf, &inserts); query {
@@ -86,14 +86,14 @@ func insert(data []byte, insertions *[]insertion) {
 
 func query(data []byte, insertions *[]insertion) int32 {
 	start := convert(data[1:5])
-	end := convert(data[6:9])
+	end := convert2(data[6:9])
 	var sum int32
 	for _, insertion := range *insertions {
 		if insertion.time > start && insertion.time < end {
 			sum += insertion.amount
 		}
 	}
-	log.Println("sum", sum)
+	log.Println("sum: ", sum)
 	return sum
 }
 
