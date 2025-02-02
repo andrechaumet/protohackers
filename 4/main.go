@@ -46,13 +46,16 @@ func listen(conn *net.UDPConn, db *database) {
 		if err != nil {
 			continue
 		}
-		go handle(string(buf), db, addr)
+		go handle(string(buf), db, addr, conn)
 	}
 }
 
-func handle(request string, db *database, addr *net.UDPAddr) {
+func handle(request string, db *database, addr *net.UDPAddr, conn *net.UDPConn) {
 	response := process(request, db)
-	write(response, addr)
+	_, err := conn.WriteToUDP([]byte(response), addr)
+	if err != nil {
+		log.Println("Error while returning request data to OP")
+	}
 }
 
 func process(request string, db *database) string {
@@ -86,8 +89,4 @@ func insert(data string, d *database) (bool, string) {
 		}
 	}
 	return false, ""
-}
-
-func write(string, *net.UDPAddr) {
-
 }
