@@ -42,15 +42,20 @@ func start(addr *net.UDPAddr) *net.UDPConn {
 func listen(conn *net.UDPConn, db *database) {
 	for {
 		buf := make([]byte, 1000)
-		_, _, err := conn.ReadFromUDP(buf)
+		_, addr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			continue
 		}
-		go handle(string(buf), db)
+		go handle(string(buf), db, addr)
 	}
 }
 
-func handle(request string, db *database) string {
+func handle(request string, db *database, addr *net.UDPAddr) {
+	response := process(request, db)
+	write(response, addr)
+}
+
+func process(request string, db *database) string {
 	if is, val := version(request); is {
 		return val
 	}
@@ -73,10 +78,16 @@ func insert(data string, d *database) (bool, string) {
 	for i := 0; i < len(data); i++ {
 		if data[i] == '=' {
 			key := data[:i]
-			value := data[1+i : len(data)]
+			value := data[1+i:]
+			d.lock.Lock()
+			defer d.lock.Unlock()
 			d.data[key] = value
 			return true, d.data[key]
 		}
 	}
 	return false, ""
+}
+
+func write(string, *net.UDPAddr) {
+
 }
