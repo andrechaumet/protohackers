@@ -22,7 +22,7 @@ type insertion struct {
 const protoSize = 9
 
 func main() {
-	ln := setup(":8080")
+	ln := setup(":8082")
 	defer ln.Close()
 	listen(ln)
 }
@@ -49,7 +49,6 @@ func listen(ln net.Listener) {
 
 func handle(conn net.Conn) {
 	defer conn.Close()
-	log.Println("Starting new process")
 	inserts := make([]insertion, 0)
 	for {
 		var buf = make([]byte, 9)
@@ -72,67 +71,40 @@ func process(data []byte, inserts *[]insertion) (int32, bool) {
 	} else if operation == 'Q' {
 		return query(data, inserts), true
 	} else {
-		log.Println("invalid operation", operation)
+		log.Println("Invalid operation", operation)
 	}
 	return 0, false
 }
 
 func insert(data []byte, insertions *[]insertion) {
-	time := convert(data[1:5])
-	price := convert2(data[6:9])
+	time, price := convert(data[1:5]), convert(data[6:9])
 	*insertions = append(*insertions, insertion{time, price})
-	log.Println("time: ", time, " ", " price: ", price)
+	log.Printf("Inserted time: %v, price: %v", time, price)
 }
 
 func query(data []byte, insertions *[]insertion) int32 {
-	start := convert(data[1:5])
-	end := convert2(data[6:9])
+	start, end := convert(data[1:5]), convert(data[6:9])
 	var sum int32
 	for _, insertion := range *insertions {
 		if insertion.time > start && insertion.time < end {
 			sum += insertion.amount
 		}
 	}
-	log.Println("sum: ", sum)
 	return sum
 }
 
 func convert(data []byte) int32 {
-	if len(data) < 4 {
-		data = append(data, make([]byte, 4-len(data))...)
+	for {
+		if len(data) == 4 {
+			break
+		} else {
+			data = append(data, 0)
+			copy(data[1:], data[:len(data)-1])
+			data[0] = 0
+		}
 	}
-	con := int32(data[0])<<24 | int32(data[1])<<16 | int32(data[2])<<8 | int32(data[3])
-	return con
+	return int32(binary.BigEndian.Uint32(data))
 }
-
-// ok so im still figuring this one out
-func convert2(data []byte) int32 {
-	if len(data) < 4 {
-		data = append(data, make([]byte, 4-len(data))...)
-	}
-	var result int32
-	length := len(data)
-
-	if length > 0 {
-		result |= int32(data[0]) << 16
-	}
-	if length > 1 {
-		result |= int32(data[1]) << 8
-	}
-	if length > 2 {
-		result |= int32(data[2])
-	}
-	return result
-}
-
-/* this fella is in jail until new notice
-func convert(data []byte) int32 {
-	var result int32
-	for i, b := range data {
-		result |= int32(b) << (24 - 8*i)
-	}
-	return result
-}*/
 
 func read(conn net.Conn, buf []byte) (int, error) {
 	n, err := conn.Read(buf[:])
