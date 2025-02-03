@@ -94,14 +94,10 @@ func query(data []byte, insertions *[]insertion) int32 {
 }
 
 func convert(data []byte) int32 {
-	for {
-		if len(data) == 4 {
-			break
-		} else {
-			data = append(data, 0)
-			copy(data[1:], data[:len(data)-1])
-			data[0] = 0
-		}
+	for len(data) < 4 {
+		data = append(data, 0)
+		copy(data[1:], data[:len(data)-1])
+		data[0] = 0
 	}
 	return int32(binary.BigEndian.Uint32(data))
 }
