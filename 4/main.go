@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"log"
 	"net"
 	"sync"
@@ -12,17 +13,27 @@ type database struct {
 	data map[string]string
 }
 
-func (db *database) save(key string, value string) string {
+func (db *database) save(key, value string) string {
+	log.Printf("Inserting key %v with value %v", key, value)
 	db.lock.Lock()
 	defer db.lock.Unlock()
 	db.data[key] = value
 	return db.data[key]
 }
 
-var db = database{sync.Mutex{}, make(map[string]string)}
+func (db *database) find(key string) string {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+	if value := db.data[key]; value != "" {
+		return value
+	}
+	return "not found"
+}
+
+var db = &database{sync.Mutex{}, make(map[string]string)}
 
 func main() {
-	addr := resolve(":8080")
+	addr := resolve(":8082")
 	conn := start(addr)
 	defer conn.Close()
 	listen(conn)
@@ -41,25 +52,27 @@ func start(addr *net.UDPAddr) *net.UDPConn {
 	if err != nil {
 		panic(err)
 	}
-	db.save("version", "v.YOLO")
+	db.save("version", "0.1")
 	return conn
 }
 
 func listen(conn *net.UDPConn) {
 	for {
-		buf := make([]byte, 1001)
+		buf := make([]byte, 1000)
 		_, addr, err := conn.ReadFromUDP(buf)
-		if err != nil || len(buf) > 1000 {
+		if err != nil {
 			continue
 		}
-		go handle(string(buf), addr, conn)
+		request := string(bytes.Trim(buf, "\x00"))
+		go handle(request, addr, conn)
 	}
 }
 
 func handle(request string, addr *net.UDPAddr, conn *net.UDPConn) {
 	response := process(request)
+	log.Printf("Writing response to addr %v: %v", addr, response)
 	if _, err := conn.WriteToUDP([]byte(response), addr); err != nil {
-		log.Println("Error while returning request data to OP")
+		log.Println("Error while returning requested data to OP")
 	}
 }
 
@@ -67,7 +80,7 @@ func process(request string) string {
 	if is, val := insert(request); is {
 		return val
 	} else {
-		return db.data[request]
+		return db.find(request)
 	}
 }
 
