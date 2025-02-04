@@ -13,6 +13,8 @@ type database struct {
 	data map[string]string
 }
 
+var db = &database{sync.Mutex{}, make(map[string]string)}
+
 func (db *database) save(key, value string) string {
 	log.Printf("Inserting key %v with value %v", key, value)
 	db.lock.Lock()
@@ -24,13 +26,8 @@ func (db *database) save(key, value string) string {
 func (db *database) find(key string) string {
 	db.lock.Lock()
 	defer db.lock.Unlock()
-	if value := db.data[key]; value != "" {
-		return value
-	}
-	return "not found"
+	return db.data[key]
 }
-
-var db = &database{sync.Mutex{}, make(map[string]string)}
 
 func main() {
 	addr := resolve(":8082")
@@ -59,8 +56,8 @@ func start(addr *net.UDPAddr) *net.UDPConn {
 func listen(conn *net.UDPConn) {
 	for {
 		buf := make([]byte, 1000)
-		_, addr, err := conn.ReadFromUDP(buf)
-		if err != nil {
+		size, addr, err := conn.ReadFromUDP(buf)
+		if err != nil || size > 1000 {
 			continue
 		}
 		request := string(bytes.Trim(buf, "\x00"))
@@ -69,7 +66,7 @@ func listen(conn *net.UDPConn) {
 }
 
 func handle(request string, addr *net.UDPAddr, conn *net.UDPConn) {
-	response := process(request)
+	response := process(request) + "\n"
 	log.Printf("Writing response to addr %v: %v", addr, response)
 	if _, err := conn.WriteToUDP([]byte(response), addr); err != nil {
 		log.Println("Error while returning requested data to OP")
@@ -87,7 +84,7 @@ func process(request string) string {
 func insert(request string) (bool, string) {
 	for i := 0; i < len(request); i++ {
 		if request[i] == '=' {
-			key, value := request[:i], request[1+i:]
+			key, value := request[:i], request[i+1:]
 			return true, db.save(key, value)
 		}
 	}
