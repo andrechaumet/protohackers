@@ -2,36 +2,28 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
-
-var types = map[string]bool{
-	"connect": true,
-	"data":    true,
-	"ack":     true,
-	"close":   true,
-}
 
 var validations = []func([]string) error{
 	validPrefixSuffix,
 	validStructure,
 	validMessageType,
-	validSessionID,
+	validSessionId,
 	validThirdField,
 	validDataField,
 }
 
-func Validate(data string) error {
+func Validate(data string) ([]string, error) {
 	data = data[1 : len(data)-1]
 	parts := strings.Split(data, "/")
 	for _, validate := range validations {
 		if err := validate(parts); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return parts, nil
 }
 
 func validPrefixSuffix(parts []string) error {
@@ -50,15 +42,15 @@ func validStructure(parts []string) error {
 }
 
 func validMessageType(parts []string) error {
-	if _, valid := types[parts[0]]; !valid {
-		return fmt.Errorf("invalid message type")
+	if _, valid := Types[parts[0]]; !valid {
+		return errors.New("invalid message type")
 	}
 	return nil
 }
 
-func validSessionID(parts []string) error {
+func validSessionId(parts []string) error {
 	if _, err := strconv.Atoi(parts[1]); err != nil {
-		return fmt.Errorf("invalid session id")
+		return errors.New("invalid session id")
 	}
 	return nil
 }
@@ -66,7 +58,7 @@ func validSessionID(parts []string) error {
 func validThirdField(parts []string) error {
 	if parts[0] == "data" || parts[0] == "ack" {
 		if _, err := strconv.Atoi(parts[2]); err != nil {
-			return fmt.Errorf("invalid pos or length")
+			return errors.New("invalid pos or length")
 		}
 	}
 	return nil
