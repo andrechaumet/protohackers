@@ -15,15 +15,15 @@ var validations = []func([]string) error{
 	validDataField,
 }
 
-func Validate(data string) ([]string, error) {
+func Validate(data string) (*Request, error) {
 	data = data[1 : len(data)-1]
 	parts := strings.Split(data, "/")
-	for _, validate := range validations {
-		if err := validate(parts); err != nil {
+	for _, validation := range validations {
+		if err := validation(parts); err != nil {
 			return nil, err
 		}
 	}
-	return parts, nil
+	return extract(parts), nil
 }
 
 func validPrefixSuffix(parts []string) error {
@@ -69,4 +69,18 @@ func validDataField(parts []string) error {
 		return errors.New("the DATA field cannot be empty for 'data' message type")
 	}
 	return nil
+}
+
+/*
+[0] message type
+[1] message id
+[2] message length
+[3] message
+*/
+
+func extract(parts []string) *Request {
+	tp, msg := parts[0], parts[3]
+	id, _ := strconv.Atoi(parts[1])
+	pos, _ := strconv.Atoi(parts[2])
+	return &Request{tp, id, pos, msg}
 }

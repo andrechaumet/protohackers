@@ -1,22 +1,31 @@
 package main
 
-var Types = map[string]func([]string){
+var Types = map[string]func(Request){
 	"connect": conn,
 	"data":    data,
 	"ack":     ack,
 	"close":   cls,
 }
 
-var connections = map[string][]string{}
-
-func conn(args []string) {
+type Request struct {
+	tp  string
+	id  int
+	pos int
+	msg string
 }
 
-func data(args []string) {
+var requests = make(map[string]Request, 10)
+
+func conn(req Request) {
 }
 
-func ack(args []string) {
+func data(req Request) {
+
 }
 
-func cls(args []string) {
+func ack(req Request) {
+}
+
+func cls(req Request) {
+
 }

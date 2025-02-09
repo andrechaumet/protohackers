@@ -41,9 +41,9 @@ func listen(conn *net.UDPConn) {
 }
 
 func handle(request string, addr *net.UDPAddr) {
-	if parts, err := Validate(request); err != nil {
+	if extracted, err := Validate(request); err != nil {
 		return
 	} else {
-		Types[parts[0]](parts)
+		Types[extracted.tp](*extracted)
 	}
 }
