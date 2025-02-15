@@ -36,7 +36,7 @@ func handleConns(ln net.Listener) {
 
 func handleConn(conn net.Conn) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(10 * time.Second))
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
 	buf := make([]byte, 1024)
 	if n, err := readConn(conn, buf); err != nil {
 		log.Println("Error reading:", err)
