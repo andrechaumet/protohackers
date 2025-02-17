@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var validations = []func([]string) error{
@@ -81,6 +82,6 @@ func validDataField(parts []string) error {
 func extract(parts []string) *Request {
 	tp, msg := parts[0], parts[3]
 	id, _ := strconv.Atoi(parts[1])
-	pos, _ := strconv.Atoi(parts[2])
-	return &Request{tp, id, pos, msg}
+	ln, _ := strconv.Atoi(parts[2])
+	return &Request{tp, id, ln, msg, time.Now()}
 }
